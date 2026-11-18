@@ -24,8 +24,10 @@
       Launch Radar reads one sealed snapshot of the protocol universe, finds every protocol that records
       no token, and prices each one against the protocols that already launched in its own line of
       business: what the market pays per dollar of TVL there, adjusted for momentum, reach and track
-      record. Each row carries the working and a six-step plan to farm it. Implied value is a model,
-      not a promise — and never a prediction that a token will exist.
+      record. One cut comes first: bridges are set aside, never priced — a bridge's TVL is other
+      protocols' assets in custody, not a launch waiting to happen. Each row carries the working and a
+      six-step plan to farm it. Implied value is a model, not a promise — and never a prediction that
+      a token will exist.
     </p>
     <div class="stats" id="stats"></div>
   </section>
@@ -74,8 +76,10 @@
       [0.01, 4] so one micro-cap cannot bend a category — then shrinks it toward the global median as if
       the global figure had six extra peers, and caps the result at 3. A category with no launched peers
       prices at the global median. That multiple is the model's whole claim about a line of business:
-      exchanges and bridges, whose TVL is largely other people's assets in transit, carry the market's
-      own low multiples; curators and exchanges of risk carry higher ones.
+      exchanges, whose TVL is largely other people's assets in transit, carry the market's own low
+      multiples; curators and exchanges of risk carry higher ones. One category rule stands in front of
+      the pricing: a protocol filed as a Bridge or a Canonical Bridge is never ranked, however large
+      its TVL — its set-aside is stated below, with the protocols it names.
     </p>
     <div class="formula" aria-label="The pricing formula">
       implied = round( tvl_usd &times; category_multiple &times; momentum &times; breadth &times; track_record )
@@ -111,9 +115,18 @@
         <tbody id="live-body"></tbody>
       </table>
     </div>
+    <h3>Bridges and canonical bridges — set aside, not ranked</h3>
+    <p class="sub">
+      A bridge's TVL is other protocols' assets in custody or in transit, not a product of its own
+      waiting to launch: WBTC is Bitcoin in a custodian's hands, and no wrap of an asset that already
+      trades becomes a launch candidate by growing. The snapshot's own watchlist excludes both bridge
+      categories for the same reason, so the board does too — a protocol DefiLlama files as a Bridge or
+      a Canonical Bridge is set aside before pricing, whatever its size.
+    </p>
+    <p class="sub" id="bridge-aside"></p>
     <h3>What this model cannot see</h3>
     <ul class="factors">
-      <li>The snapshot carries no parent-protocol field, so a wrapped product is caught only by the name tests (a version suffix, a whole word wrapped / staked / staking, an exchange's name at the front) — the same tests the snapshot's own watchlist documents, applied without its $50M floor.</li>
+      <li>The snapshot carries no parent-protocol field, so a wrapped product outside the bridge categories is caught only by the name tests (a version suffix, a whole word wrapped / staked / staking, an exchange's name at the front) — the same tests the snapshot's own watchlist documents, applied without its $50M floor. One filed under another category, with a clean name, would slip through.</li>
       <li>Peer value is circulating market cap, not fully diluted value; a launch priced on full supply would read higher.</li>
       <li>TVL is one day's figure and seven days of momentum is a short window; the model prices the record as it stands, nothing more.</li>
       <li>Say a protocol <i>records</i> no token, never that it has none: a token its DefiLlama record does not carry would not appear here.</li>

@@ -1,6 +1,7 @@
 // Launch Radar's dashboard. It reads window.RADAR (written beside dashboard/ by main.ts) and renders
-// the ranked board, the filters, the category evidence table, the set-aside live tokens, and a detail
-// view per protocol with the model's factors and the farm plan. No network: every byte is in data.js.
+// the ranked board, the filters, the category evidence table, the set-asides (the live tokens and the
+// bridges the category rule excludes), and a detail view per protocol with the model's factors and
+// the farm plan. No network: every byte is in data.js.
 //
 // The detail view recomputes a row's implied value in this page, from the factors the row carries —
 // the model rounds every factor to four decimals before it multiplies, so the page's arithmetic is
@@ -217,6 +218,15 @@
         el('td', { class: 'num', text: fmtMult(r.multiple) })
       ));
     });
+    var ba = document.getElementById('bridge-aside');
+    if (ba && DATA.set_aside) {
+      var examples = DATA.set_aside.bridge_examples.map(function (p) {
+        return p.name + ' (' + fmtUsd(p.tvl_usd) + ' of TVL)';
+      }).join(', ');
+      ba.textContent = 'Set aside on this snapshot: ' + DATA.set_aside.bridges +
+        ' pre-token bridges and canonical bridges, holding ' + fmtUsd(DATA.set_aside.bridge_tvl_usd) +
+        ' of other assets between them — the largest are ' + examples + '.';
+    }
   }
 
   /* ---------------------------------------------------------- detail view */

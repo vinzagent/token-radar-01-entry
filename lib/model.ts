@@ -48,7 +48,7 @@ export class SnapshotError extends Error {
 // ------------------------------------------------------------------ constants
 
 /** The model's version label: the dashboard names it and the board carries it. */
-export const MODEL_VERSION = 'launch-radar-2';
+export const MODEL_VERSION = 'launch-radar-3';
 
 /** A peer's market-cap/TVL ratio is winsorised into this band before any median is taken. */
 export const PEER_RATIO_MIN = 0.01;
@@ -124,15 +124,34 @@ const WRAPPED_WORD = /\b(wrapped|staked|staking)\b/i;
 /** A name that begins with an exchange's: the exchange's own product line, not an independent launch. */
 const EXCHANGE_PREFIX = /^(Binance|Coinbase|Bybit|Kraken|Bitget|OKX|Bitfinex|Gemini)\b/;
 
+/** The snapshot README's name tests as one predicate: no version suffix, no wrapped/staked word, no exchange prefix. */
+function passesNameTests(p: SnapshotProtocol): boolean {
+  return !VERSIONED.test(p.name) && !WRAPPED_WORD.test(p.name) && !EXCHANGE_PREFIX.test(p.name);
+}
+
 /**
- * Whether a protocol is one the board may rank: it records no token, and its name does not mark it as
+ * The categories the board sets aside however large their TVL: a bridge's TVL is other protocols'
+ * assets in custody or in transit, not a product of its own waiting to launch — WBTC is Bitcoin in a
+ * custodian's hands — and the snapshot's own watchlist excludes both bridge categories for that
+ * reason. This is the model's one category rule; exchanges stay, because an exchange can launch a
+ * token of its own and the market's low CEX multiples price the ones that record none.
+ */
+const CUSTODY_CATEGORIES: ReadonlySet<string> = new Set(['Bridge', 'Canonical Bridge']);
+
+/** Whether the bridge rule sets a protocol aside: pre-token, the name tests passed, filed as a bridge. */
+export function isSetAsideBridge(p: SnapshotProtocol): boolean {
+  return isPreToken(p) && passesNameTests(p) && p.category !== null && CUSTODY_CATEGORIES.has(p.category);
+}
+
+/**
+ * Whether a protocol is one the board may rank: it records no token, its name does not mark it as
  * a version of another product, a wrapped or staked product of a trading asset, or an exchange's own
- * line. These are the snapshot README's name tests for the watchlist, applied without its TVL floor
- * and without dropping whole categories: a bridge or an exchange that records no token is still a
- * candidate, and the market's own low multiples for those categories price it (see peerMultiples).
+ * line, and it is not filed as a bridge. The name tests are the snapshot README's tests for the
+ * watchlist, applied without its TVL floor; the bridge rule is the one category cut, and the
+ * dashboard names every protocol it sets aside (see setAsideBridges).
  */
 export function isRankable(p: SnapshotProtocol): boolean {
-  return isPreToken(p) && !VERSIONED.test(p.name) && !WRAPPED_WORD.test(p.name) && !EXCHANGE_PREFIX.test(p.name);
+  return isPreToken(p) && passesNameTests(p) && !isSetAsideBridge(p);
 }
 
 // ------------------------------------------------------------------ peer multiples
@@ -643,7 +662,7 @@ export interface BoardRow {
 
 /**
  * The board: every rankable protocol — the whole watchlist plus the wider pre-token universe the name
- * tests leave — priced, sorted by implied value (ties: TVL, then slug), and ranked 1..N.
+ * tests and the bridge rule leave — priced, sorted by implied value (ties: TVL, then slug), ranked 1..N.
  */
 export function buildBoard(snapshot: Snapshot): BoardRow[] {
   const peers = peerMultiples(snapshot);
@@ -746,6 +765,29 @@ export function liveRows(snapshot: Snapshot): LiveRow[] {
     }));
 }
 
+/** One protocol the bridge rule set aside, named on the dashboard with the size that did not save it. */
+export interface SetAsideBridge {
+  slug: string;
+  name: string;
+  category: string;
+  tvl_usd: number;
+}
+
+/**
+ * Every protocol the bridge rule set aside: how many, their combined TVL, and the largest few by TVL.
+ * The dashboard prints all three, so the cut is a stated rule with named casualties, not a quiet edit.
+ */
+export function setAsideBridges(snapshot: Snapshot): { count: number; tvl_usd: number; examples: SetAsideBridge[] } {
+  const set = snapshot.protocols
+    .filter(isSetAsideBridge)
+    .sort((a, b) => b.tvl_usd - a.tvl_usd || (a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0));
+  return {
+    count: set.length,
+    tvl_usd: set.reduce((n, p) => n + p.tvl_usd, 0),
+    examples: set.slice(0, 3).map((p) => ({ slug: p.slug, name: p.name, category: p.category!, tvl_usd: p.tvl_usd })),
+  };
+}
+
 /** One category's line in the dashboard's methodology table. */
 export interface CategoryLine {
   category: string;
@@ -781,6 +823,11 @@ export interface RadarData {
   categories: CategoryLine[];
   rows: BoardRow[];
   live: LiveRow[];
+  set_aside: {
+    bridges: number;
+    bridge_tvl_usd: number;
+    bridge_examples: SetAsideBridge[];
+  };
 }
 
 /** Everything the dashboard needs: the board, the live set, the category evidence, and the model. */
@@ -788,6 +835,7 @@ export function buildRadar(snapshot: Snapshot): { board: BoardRow[]; radar: Rada
   const board = buildBoard(snapshot);
   const peers = peerMultiples(snapshot);
   const live = liveRows(snapshot);
+  const aside = setAsideBridges(snapshot);
   const lines = new Map<string, CategoryLine>();
   for (const row of board) {
     const key = row.category ?? 'Uncategorized';
@@ -830,6 +878,11 @@ export function buildRadar(snapshot: Snapshot): { board: BoardRow[]; radar: Rada
     categories,
     rows: board,
     live,
+    set_aside: {
+      bridges: aside.count,
+      bridge_tvl_usd: aside.tvl_usd,
+      bridge_examples: aside.examples,
+    },
   };
   return { board, radar };
 }
