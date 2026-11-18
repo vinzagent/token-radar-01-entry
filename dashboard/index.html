@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Launch Radar — pre-token protocols ranked by implied launch value</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="radar-mark" aria-hidden="true"><i></i><i></i><i></i><b></b></span>
+    <span class="brand-name">Launch Radar</span>
+  </div>
+  <div class="top-meta" id="top-meta"></div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="hero-rings" aria-hidden="true"></div>
+    <p class="kicker">Token launch radar</p>
+    <h1>Every protocol with no token yet, ranked by what its launch would be worth.</h1>
+    <p class="lede">
+      Launch Radar reads one sealed snapshot of the protocol universe, finds every protocol that records
+      no token, and prices each one against the protocols that already launched in its own line of
+      business: what the market pays per dollar of TVL there, adjusted for momentum, reach and track
+      record. Each row carries the working and a six-step plan to farm it. Implied value is a model,
+      not a promise — and never a prediction that a token will exist.
+    </p>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <section class="controls" aria-label="Board controls">
+    <div class="field grow">
+      <label for="q">Search</label>
+      <input type="search" id="q" placeholder="Name, category or chain" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="category">Category</label>
+      <select id="category"></select>
+    </div>
+    <div class="field">
+      <label for="chain">Chain</label>
+      <select id="chain"></select>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" id="watch-only">
+      <span>Watchlist only</span>
+    </label>
+    <span class="count" id="count"></span>
+  </section>
+
+  <section class="panel" aria-label="The board">
+    <div class="table-wrap">
+      <table id="board-table">
+        <caption>Pre-token protocols, strongest implied value first. Select a row for its pricing and farm plan.</caption>
+        <thead id="board-head"></thead>
+        <tbody id="board-body"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="empty" hidden>
+      <h2>No protocol matches that filter</h2>
+      <p>Clear the search or pick another category or chain to see the board again.</p>
+      <button type="button" class="button" id="clear-filters">Clear filters</button>
+    </div>
+  </section>
+
+  <section class="method" aria-label="How the radar prices a launch">
+    <h2>How implied value is computed</h2>
+    <p>
+      A protocol with no token has no price, but the snapshot is full of protocols that did launch. For
+      each of those, market cap divided by TVL is what the market actually paid per dollar of TVL. The
+      radar takes the median of that ratio inside each category — every ratio first winsorised to
+      [0.01, 4] so one micro-cap cannot bend a category — then shrinks it toward the global median as if
+      the global figure had six extra peers, and caps the result at 3. A category with no launched peers
+      prices at the global median. That multiple is the model's whole claim about a line of business:
+      exchanges and bridges, whose TVL is largely other people's assets in transit, carry the market's
+      own low multiples; curators and exchanges of risk carry higher ones.
+    </p>
+    <div class="formula" aria-label="The pricing formula">
+      implied = round( tvl_usd &times; category_multiple &times; momentum &times; breadth &times; track_record )
+    </div>
+    <ul class="factors">
+      <li><b>Momentum</b> — 1 + clamp(change_7d, &minus;50, +60) / 100 &times; 0.6. A protocol gathering TVL is gathering the users a launch rewards; one bleeding TVL is discounted, never below &times;0.70 or above &times;1.36.</li>
+      <li><b>Breadth</b> — 1 + 0.04 &times; log2(chains). Each doubling of the chain count is another community a token would drop to.</li>
+      <li><b>Track record</b> — 0.85 rising to 1.15 over four years since DefiLlama first listed the protocol. Years at scale with no token is evidence of staying power and of an unrewarded user base; a protocol listed last month is discounted instead. An unlisted age scores a neutral 1.00.</li>
+    </ul>
+    <p>
+      Every factor is rounded to four decimals before the multiplication, so each row's implied value is
+      exactly reproducible from the factors printed beside it — the detail view recomputes it in this
+      page, from the row's own numbers, and shows the same dollar the board carries. No protocol name is
+      special-cased anywhere in the model: one function prices every row.
+    </p>
+    <h3>What the market pays, by category</h3>
+    <p class="sub">The evidence base: launched peers in this snapshot, their median market cap per TVL dollar, and the shrunk multiple the board applies.</p>
+    <div class="table-wrap">
+      <table id="category-table">
+        <thead><tr><th scope="col">Category</th><th scope="col">Board rows</th><th scope="col">Launched peers</th><th scope="col">Peer median</th><th scope="col">Multiple applied</th></tr></thead>
+        <tbody id="category-body"></tbody>
+      </table>
+    </div>
+    <h3>Already trading — set aside, not ranked</h3>
+    <p class="sub">
+      These protocols already have a token, so their market cap is a fact, not a model. They are the
+      radar's evidence, never its subjects: the largest are shown here, and every one of them is excluded
+      from the board above.
+    </p>
+    <div class="table-wrap">
+      <table id="live-table">
+        <thead><tr><th scope="col">Protocol</th><th scope="col">Category</th><th scope="col">TVL</th><th scope="col">7d</th><th scope="col">Market cap</th><th scope="col">Cap / TVL</th></tr></thead>
+        <tbody id="live-body"></tbody>
+      </table>
+    </div>
+    <h3>What this model cannot see</h3>
+    <ul class="factors">
+      <li>The snapshot carries no parent-protocol field, so a wrapped product is caught only by the name tests (a version suffix, a whole word wrapped / staked / staking, an exchange's name at the front) — the same tests the snapshot's own watchlist documents, applied without its $50M floor.</li>
+      <li>Peer value is circulating market cap, not fully diluted value; a launch priced on full supply would read higher.</li>
+      <li>TVL is one day's figure and seven days of momentum is a short window; the model prices the record as it stands, nothing more.</li>
+      <li>Say a protocol <i>records</i> no token, never that it has none: a token its DefiLlama record does not carry would not appear here.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>Launch Radar — built from one sealed DefiLlama snapshot; the page runs entirely from the data file beside it and makes no network calls. Implied values are a model's estimates, not prices, and not investment advice.</p>
+  </footer>
+</main>
+
+<dialog id="detail" aria-labelledby="detail-title"></dialog>
+
+<script src="../data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -224,25 +224,31 @@ export interface Pricing {
 
 const round4 = (n: number): number => Math.round(n * 1e4) / 1e4;
 
-/** Price one pre-token protocol: TVL x category multiple x momentum x breadth x track record. */
+/**
+ * Price one pre-token protocol: TVL x category multiple x momentum x breadth x track record.
+ * Each factor is rounded to 4 decimals BEFORE the multiplication, so the implied value is exactly
+ * reproducible from the factors the row carries — the dashboard recomputes it in the page and gets
+ * the same dollar board.json holds.
+ */
 export function price(p: SnapshotProtocol, asOf: string, peers: PeerModel): Pricing {
   const cm = multipleFor(peers, p);
   const growthPct = Math.min(GROWTH_CAP, Math.max(GROWTH_FLOOR, p.change_7d ?? 0));
-  const momentum = 1 + (growthPct / 100) * GROWTH_WEIGHT;
-  const breadth = 1 + BREADTH_PER_DOUBLING * Math.log2(Math.max(1, p.chains.length));
+  const multiple = round4(cm.multiple);
+  const momentum = round4(1 + (growthPct / 100) * GROWTH_WEIGHT);
+  const breadth = round4(1 + BREADTH_PER_DOUBLING * Math.log2(Math.max(1, p.chains.length)));
   const age = ageDays(asOf, p.listed_at);
-  const ageFactor = age === null ? 1 : AGE_BASE + (Math.min(age, AGE_DAYS_CAP) / AGE_DAYS_CAP) * AGE_RANGE;
-  const implied = Math.max(1, Math.round(p.tvl_usd * cm.multiple * momentum * breadth * ageFactor));
+  const ageFactor = round4(age === null ? 1 : AGE_BASE + (Math.min(age, AGE_DAYS_CAP) / AGE_DAYS_CAP) * AGE_RANGE);
+  const implied = Math.max(1, Math.round(p.tvl_usd * multiple * momentum * breadth * ageFactor));
   return {
     implied,
-    multiple: round4(cm.multiple),
+    multiple,
     peer_count: cm.peers,
     peer_median: cm.peer_median === null ? null : round4(cm.peer_median),
     growth_pct: growthPct,
-    momentum_factor: round4(momentum),
-    breadth_factor: round4(breadth),
+    momentum_factor: momentum,
+    breadth_factor: breadth,
     age_days: age,
-    age_factor: round4(ageFactor),
+    age_factor: ageFactor,
   };
 }
 
